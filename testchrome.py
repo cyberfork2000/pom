@@ -1,4 +1,5 @@
 import time
+import os
 import unittest
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -18,10 +19,34 @@ whoami = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
 
 class BasePage(object):
 
-    print("BASE PAGE CLASS")
-
     def __init__(self, driver):
         self._driver = driver
+
+
+class DockPageLocators(object):
+
+    ELEMENT_IDS = {
+        "XPATH": {
+            "ADD_DOCK_POPUP": '//div[@role="presentation"]/section',
+            "LOGOUT_BUTTON": '//div[@title="Logout"]',
+            "DOCKS_BUTTON": '//div[@title="Docks"]',
+            "LOBBY_BUTTON": '//div[@title="Lobby Dashboard"]'
+        },
+        "CSS": {
+            "ADD_DOCK_BUTTON": 'button.MuiButtonBase-root.MuiButton-root',
+        },
+        "ID": {
+            "DOCK_ID_FIELD": 'id',
+            "CUSTOM_ID_FIELD": 'customId',
+            "BUILDING_FIELD": 'building',
+            "BUILDING_MENU": 'menu-building',
+            "FLOOR_FIELD": 'floor',
+            "FLOOR_MENU": 'menu-floor',
+            "AREA_FIELD": 'area',
+            "AREA_MENU": 'menu-area',
+            "ADD_DOCK_CANCEL_BUTTON": 'cancel-btn',
+        }
+    }
 
 
 class RegisterPageLocators(object):
@@ -56,8 +81,6 @@ class LoginPageLocators(object):
 
 
 class RegisterPage(BasePage):
-
-    print("REGISTER PAGE CLASS")
 
     def it_exists(self, id):
         elements = self._driver.find_elements_by_id(id)
@@ -98,25 +121,17 @@ class RegisterPage(BasePage):
         field.send_keys(Keys.RETURN)
         time.sleep(1)
 
-    def new_user_is_accepted(self, expected_url=REGISTER_URL_SUCCESS):
+    def new_user_is_accepted(self):
         button = self.it_exists(RegisterPageLocators.ELEMENT_IDS["BUTTON"])
         assert_that(button.is_displayed(), equal_to(True))
         assert_that(button.is_enabled(), equal_to(True))
-        print(self._driver.title)
         button.click()
-        print("submitted")
+        print("registered")
         time.sleep(3)
         assert self._driver.page_source.find("Activate your account")
-        # WebDriverWait(self._driver, 15).until(EC.url_changes(expected_url))
-        # assert_that(self._driver.find_elements_by_id(RegisterPageLocators.ELEMENT_IDS["RESEND"]), equal_to(True))
-        # button = self._submit_button(RegisterPageLocators.ELEMENT_IDS["RESEND"])
-        # assert_that(button.is_displayed(), equal_to(True))
-        # assert_that(button.is_enabled(), equal_to(True))
 
 
 class LoginPage(BasePage):
-
-    print("LOGIN PAGE CLASS")
 
     def it_exists(self, id):
         elements = self._driver.find_elements_by_id(id)
@@ -131,21 +146,6 @@ class LoginPage(BasePage):
     def navigate_to_login_page(self):
         self._driver.get(LOGIN_URL)
         time.sleep(5)
-
-    # def enter_credentials(self, username, password):
-    #     print("EMTER CREDENTIALS")
-    #     field = self.it_exists(LoginPageLocators.ELEMENT_IDS["FIELDS"]["EMAIL"])
-    #     field = self.find_element_by_id(LoginPageLocators.ELEMENT_IDS["FIELDS"]["EMAIL"])
-    #     field.click()
-    #     field.send_keys(username)
-    #     #field.send_keys(Keys.RETURN)
-    #     field = self.it_exists(LoginPageLocators.ELEMENT_IDS["FIELDS"]["PASSWORD"])
-    #     field = self.find_element_by_id(LoginPageLocators.ELEMENT_IDS["FIELDS"]["PASSWORD"])
-    #     field.click()
-    #     field.send_keys(password)
-    #     # field.send_keys(Keys.RETURN)
-    #     # button = self.it_exists((self, LoginPageLocators.ELEMENT_IDS["BUTTON"]))
-    #     # time.sleep(2)
 
     def set_email(self, name):
         field = self.it_exists(LoginPageLocators.ELEMENT_IDS["FIELDS"]["EMAIL"])
@@ -162,21 +162,40 @@ class LoginPage(BasePage):
         time.sleep(1)
 
     def credentials_accepted(self):
-        print("ACCEPT CREDENTIALS")
-        #button = self.it_exists((self, LoginPageLocators.ELEMENT_IDS["BUTTON"]))
         button = self._submit_button(LoginPageLocators.ELEMENT_IDS["BUTTON"])
         assert_that(button.is_displayed(), equal_to(True))
         assert_that(button.is_enabled(), equal_to(True))
-        print(self._driver.title)
         button.click()
         print("submitted")
         time.sleep(3)
         assert self._driver.page_source.find("You don't have any docks in here")
 
 
-class TestTemplate(unittest.TestCase):
+class DocksPage(BasePage):
 
-    print("TEST TEMPLATE CLASS")
+    def it_exists(self, id):
+        elements = self._driver.find_elements_by_id(id)
+        if elements:
+            return elements[0]
+        else:
+            return False
+
+    def _logout_button(self, field_id):
+        return self._driver.find_element_by_id(field_id)
+
+    def logout_deskguru(self):
+        button = self._driver.find_element_by_class_name('general-routes').find_element_by_xpath('//div[@title="Logout"]')
+        #button = self._driver.find_element_by_class_name('general-routes').find_element_by_xpath(ELEMENT_IDS['XPATH']['LOGOUT_BUTTON'])
+        #button = self._logout_button(DockPageLocators.ELEMENT_IDS["XPATH"]["LOGOUT_BUTTON"])
+        assert_that(button.is_displayed(), equal_to(True))
+        assert_that(button.is_enabled(), equal_to(True))
+        button.click()
+        print("logging out")
+        time.sleep(3)
+        assert self._driver.page_source.find("Log into your account")
+
+
+class TestTemplate(unittest.TestCase):
 
     def setUp(self):
         self.driver = webdriver.Chrome()
@@ -195,7 +214,7 @@ class TestRegisterAndLoginFlow(TestTemplate):
         register_page.set_name("Luna Landing")
         register_page.set_company("Pie")
         print(whoami + " registered")
-        register_page.set_email(whoami + "@example.com")
+        register_page.set_email(whoami + os.environ['ADDRESS'])
         register_page.set_password("1Password")
         register_page.new_user_is_accepted()
 
@@ -203,17 +222,20 @@ class TestRegisterAndLoginFlow(TestTemplate):
         login_page = LoginPage(self.driver)
         login_page.navigate_to_login_page()
         print(whoami + " login")
-        #login_page.enter_credentials(whoami + "@example.com", "1Password")
-        login_page.set_email(whoami + "@example.com")
+        login_page.set_email(whoami + os.environ['ADDRESS'])
         login_page.set_password("1Password")
         login_page.credentials_accepted()
-        time.sleep(5)
-        #login_page.credentials_accepted()
+        time.sleep(2)
+
+    def _test_logout_user(self):
+        docks_page = DocksPage(self.driver)
+        docks_page.logout_deskguru()
+        time.sleep(2)
 
     def test_registration(self):
         self._test_register_user()
         self._test_login_user()
-
+        self._test_logout_user()
 
 
 if __name__ == '__main__':
